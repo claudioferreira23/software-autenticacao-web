@@ -2,7 +2,8 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
-    "packageManager": "npm"
+    "packageManager": "npm",
+    "analytics": "4e89f316-812e-4aac-ae7d-3b2fe86fd519"
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -30,7 +31,8 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/@openng/ngx-toastr/toastr.css"
             ]
           },
           "configurations": {
