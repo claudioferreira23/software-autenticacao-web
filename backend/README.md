@@ -13,7 +13,7 @@ O Maven não precisa estar instalado: use sempre o wrapper `./mvnw`.
 
 Todos os comandos abaixo são executados dentro da pasta `backend/`.
 
-Crie o arquivo `.env` a partir do exemplo e troque a senha do banco:
+Crie o arquivo `.env` a partir do exemplo e troque as senhas:
 
 ```bash
 cp .env.example .env
@@ -24,6 +24,7 @@ cp .env.example .env
 | `DB_URL` | URL JDBC do PostgreSQL |
 | `DB_USERNAME` | usuário do banco |
 | `DB_PASSWORD` | senha do banco |
+| `SEED_SENHA_PADRAO` | senha dos usuários de exemplo, usada só no perfil `dev` |
 
 O `.env` é ignorado pelo git e nunca deve ser commitado.
 
@@ -44,10 +45,42 @@ set -a && . ./.env && set +a
 
 Ao iniciar, o Flyway aplica as migrações de `src/main/resources/db/migration`. A API fica disponível em `http://localhost:8080`.
 
+Para subir com os usuários de exemplo, use o perfil `dev`:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+No perfil `dev`, a aplicação cria os usuários abaixo se eles ainda não existirem, todos com a senha definida em `SEED_SENHA_PADRAO`. Eles servem apenas para desenvolvimento e testes manuais.
+
+| Nome | E-mail |
+|---|---|
+| Maria Exemplo | `maria@exemplo.com` |
+| João Exemplo | `joao@exemplo.com` |
+
 Para conferir a tabela criada:
 
 ```bash
 docker compose exec postgres psql -U "$DB_USERNAME" -d autenticacao -c '\d usuarios'
+```
+
+## Endpoint de login
+
+`POST /api/auth/login`, com corpo JSON `{ "email": "...", "senha": "..." }`.
+
+| Status | Significado |
+|---|---|
+| 200 | autenticado; o corpo traz `id`, `nome` e `email` do usuário |
+| 400 | entrada inválida (`ENTRADA_INVALIDA`) |
+| 401 | e-mail ou senha inválidos (`CREDENCIAIS_INVALIDAS`) |
+| 500 | erro interno (`ERRO_INTERNO`) |
+
+Exemplo com um usuário do perfil `dev`:
+
+```bash
+curl -i -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"maria@exemplo.com\",\"senha\":\"$SEED_SENHA_PADRAO\"}"
 ```
 
 ## Executar os testes
