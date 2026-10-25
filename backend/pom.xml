@@ -6,26 +6,13 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.1.2</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>br.ufg.autenticacao</groupId>
 	<artifactId>autenticacao-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>autenticacao-api</name>
+	<description>API de autenticação de usuários da APS de Domínios de Software (UFG)</description>
 	<properties>
 		<java.version>21</java.version>
 		<bcprov.version>1.86</bcprov.version>
