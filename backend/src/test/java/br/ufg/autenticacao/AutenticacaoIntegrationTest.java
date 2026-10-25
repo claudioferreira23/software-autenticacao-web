@@ -6,10 +6,14 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
@@ -20,6 +24,7 @@ import br.ufg.autenticacao.infra.UsuarioJpaRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
+@ExtendWith(OutputCaptureExtension.class)
 class AutenticacaoIntegrationTest {
 
 	private static final String EMAIL_MARIA = "maria@exemplo.com";
@@ -36,6 +41,9 @@ class AutenticacaoIntegrationTest {
 
 	@Autowired
 	private PasswordHasher passwordHasher;
+
+	@Autowired
+	private Environment environment;
 
 	private UsuarioEntity maria;
 
@@ -94,6 +102,17 @@ class AutenticacaoIntegrationTest {
 		Resposta resposta = login(EMAIL_MARIA, SENHA_MARIA);
 
 		assertThat(resposta.corpo()).doesNotContain("$argon2id$").doesNotContain("senhaHash");
+	}
+
+	@Test
+	void naoRegistraValoresRejeitadosNoLogQuandoAEntradaEInvalida(CapturedOutput saida) {
+		String senhaRejeitada = "senha-rejeitada-" + "x".repeat(120);
+
+		Resposta resposta = login("email-invalido", senhaRejeitada);
+
+		assertThat(resposta.status()).isEqualTo(400);
+		assertThat(environment.getProperty("spring.mvc.log-resolved-exception", Boolean.class)).isFalse();
+		assertThat(saida.getOut()).doesNotContain(senhaRejeitada).doesNotContain("email-invalido");
 	}
 
 }
