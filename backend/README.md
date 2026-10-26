@@ -1,4 +1,4 @@
-# autenticacao-api
+# Portal DS API
 
 Backend da aplicação de autenticação de usuários (Spring Boot 4, Java 21, PostgreSQL 16).
 
@@ -25,6 +25,7 @@ cp .env.example .env
 | `DB_USERNAME` | usuário do banco |
 | `DB_PASSWORD` | senha do banco |
 | `SEED_SENHA_PADRAO` | senha dos usuários de exemplo, usada só no perfil `dev` |
+| `SESSION_COOKIE_SECURE` | `false` no HTTP local; no perfil `prod` o padrão é `true` |
 
 O `.env` é ignorado pelo git e nunca deve ser commitado.
 
@@ -45,6 +46,9 @@ set -a && . ./.env && set +a
 
 Ao iniciar, o Flyway aplica as migrações de `src/main/resources/db/migration`. A API fica disponível em `http://localhost:8080`.
 
+A documentação interativa Swagger fica disponível em `http://localhost:8080/swagger-ui.html`.
+Ao acessar a raiz `http://localhost:8080/`, o navegador é redirecionado para ela.
+
 Para subir com os usuários de exemplo, use o perfil `dev`:
 
 ```bash
@@ -64,23 +68,68 @@ Para conferir a tabela criada:
 docker compose exec postgres psql -U "$DB_USERNAME" -d autenticacao -c '\d usuarios'
 ```
 
-## Endpoint de login
+## Autenticação e segurança
 
-`POST /api/auth/login`, com corpo JSON `{ "email": "...", "senha": "..." }`.
+A autenticação usa sessão HTTP mantida no servidor. O navegador recebe apenas o cookie
+`JSESSIONID`, configurado como `HttpOnly` e `SameSite=Lax`; nenhuma senha ou token de
+autenticação precisa ser armazenado no JavaScript. O identificador da sessão é trocado
+no login e invalidado no logout.
+
+As operações que alteram estado exigem CSRF. Antes delas, chame `GET /api/auth/csrf`,
+mantenha o token retornado apenas em memória e envie-o no cabeçalho `X-XSRF-TOKEN`.
+O token também fica associado à sessão no servidor. A sessão expira após 30 minutos por
+padrão (`SESSION_TIMEOUT` pode alterar esse valor).
+
+## Endpoints
+
+### Cadastro
+
+`POST /api/auth/cadastro`
+
+```json
+{ "nome": "Maria", "email": "maria@exemplo.com", "senha": "Senha-Correta-123" }
+```
+
+Retorna `201` com `{ "id", "nome", "email" }`. Nome e e-mail são normalizados, a senha
+deve ter entre 8 e 128 caracteres e é persistida somente como hash Argon2id. Um e-mail
+já cadastrado retorna `409` com o código `EMAIL_JA_CADASTRADO`.
+
+### Login
+
+`POST /api/auth/login`
+
+```json
+{ "email": "maria@exemplo.com", "senha": "Senha-Correta-123" }
+```
 
 | Status | Significado |
 |---|---|
-| 200 | autenticado; o corpo traz `id`, `nome` e `email` do usuário |
+| 200 | sessão criada; o corpo traz `id`, `nome` e `email` do usuário |
 | 400 | entrada inválida (`ENTRADA_INVALIDA`) |
 | 401 | e-mail ou senha inválidos (`CREDENCIAIS_INVALIDAS`) |
 | 500 | erro interno (`ERRO_INTERNO`) |
 
-Exemplo com um usuário do perfil `dev`:
+### Usuário autenticado
+
+`GET /api/auth/me` retorna a identidade da sessão atual. Sem uma sessão válida, retorna
+`401` com `NAO_AUTENTICADO`.
+
+### Logout
+
+`POST /api/auth/logout` invalida a sessão e retorna `204`. A requisição também exige o
+cabeçalho CSRF.
+
+Exemplo completo com `curl` e um usuário do perfil `dev`:
 
 ```bash
-curl -i -X POST http://localhost:8080/api/auth/login \
+CSRF_TOKEN=$(curl -s -c cookies.txt http://localhost:8080/api/auth/csrf | jq -r .token)
+
+curl -i -b cookies.txt -c cookies.txt -X POST http://localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
+  -H "X-XSRF-TOKEN: $CSRF_TOKEN" \
   -d "{\"email\":\"maria@exemplo.com\",\"senha\":\"$SEED_SENHA_PADRAO\"}"
+
+curl -b cookies.txt http://localhost:8080/api/auth/me
 ```
 
 ## Executar os testes
