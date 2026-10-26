@@ -1,7 +1,9 @@
 package br.ufg.autenticacao.api;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,10 +47,15 @@ public class AuthController {
 
 	private final AuthService authService;
 	private final SecurityContextRepository securityContextRepository;
+	private final LimitadorTentativasLogin limitadorTentativasLogin;
 
-	public AuthController(AuthService authService, SecurityContextRepository securityContextRepository) {
+	public AuthController(
+			AuthService authService,
+			SecurityContextRepository securityContextRepository,
+			LimitadorTentativasLogin limitadorTentativasLogin) {
 		this.authService = authService;
 		this.securityContextRepository = securityContextRepository;
+		this.limitadorTentativasLogin = limitadorTentativasLogin;
 	}
 
 	@PostMapping("/login")
@@ -60,24 +67,42 @@ public class AuthController {
 			@ApiResponse(responseCode = "200", description = "Login realizado e sessão criada"),
 			@ApiResponse(responseCode = "400", description = "Dados de entrada inválidos"),
 			@ApiResponse(responseCode = "401", description = "E-mail ou senha inválidos"),
-			@ApiResponse(responseCode = "403", description = "Token CSRF ausente ou inválido") })
+			@ApiResponse(responseCode = "403", description = "Token CSRF ausente ou inválido"),
+			@ApiResponse(responseCode = "429", description = "Muitas tentativas; aguarde e tente novamente") })
 	public ResponseEntity<LoginResponse> login(
 			@Valid @RequestBody LoginRequest requisicao,
 			HttpServletRequest request,
 			HttpServletResponse response) {
+		String ip = request.getRemoteAddr();
+		Optional<Duration> bloqueio = limitadorTentativasLogin.verificarIp(ip)
+				.or(() -> limitadorTentativasLogin.verificarEmail(requisicao.email()));
+		if (bloqueio.isPresent()) {
+			return respostaTentativasExcedidas(bloqueio.get());
+		}
+
 		ResultadoAutenticacao resultado = authService.autenticar(requisicao.email(), requisicao.senha());
 
 		log.info("Tentativa de autenticação [horario={}, origem={}, resultado={}]",
-				Instant.now(), request.getRemoteAddr(), resultado.autenticado() ? "SUCESSO" : "FALHA");
+				Instant.now(), ip, resultado.autenticado() ? "SUCESSO" : "FALHA");
 
 		if (resultado.autenticado()) {
+			limitadorTentativasLogin.registrarSucessoEmail(requisicao.email());
 			IdentidadeUsuario identidade = resultado.identidade();
 			registrarAutenticacao(identidade, request, response);
 			return ResponseEntity.ok(LoginResponse.sucesso(paraResponse(identidade)));
 		}
+		limitadorTentativasLogin.registrarFalhaIp(ip);
+		limitadorTentativasLogin.registrarFalhaEmail(requisicao.email());
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.header(HttpHeaders.WWW_AUTHENTICATE, WWW_AUTHENTICATE)
 				.body(LoginResponse.credenciaisInvalidas());
+	}
+
+	private ResponseEntity<LoginResponse> respostaTentativasExcedidas(Duration tempoRestante) {
+		long retryAfterSegundos = Math.max(1, tempoRestante.toSeconds());
+		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+				.header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSegundos))
+				.body(LoginResponse.tentativasExcedidas());
 	}
 
 	@PostMapping("/cadastro")

@@ -3,6 +3,7 @@ package br.ufg.autenticacao.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -13,9 +14,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,6 +59,15 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private AuthService authService;
+
+	@MockitoBean
+	private LimitadorTentativasLogin limitadorTentativasLogin;
+
+	@BeforeEach
+	void liberarLimiteDeTentativasPorPadrao() {
+		given(limitadorTentativasLogin.verificarIp(anyString())).willReturn(Optional.empty());
+		given(limitadorTentativasLogin.verificarEmail(anyString())).willReturn(Optional.empty());
+	}
 
 	private static String corpo(String email, String senha) {
 		return "{\"email\":\"" + email + "\",\"senha\":\"" + senha + "\"}";
@@ -243,6 +256,55 @@ class AuthControllerTest {
 		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.erro").value("ACESSO_NEGADO"));
+	}
+
+	@Test
+	void devolve429ComRetryAfterQuandoIpEstaBloqueado() throws Exception {
+		given(limitadorTentativasLogin.verificarIp(anyString())).willReturn(Optional.of(Duration.ofSeconds(42)));
+
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().string(HttpHeaders.RETRY_AFTER, "42"))
+				.andExpect(content().json("""
+						{"autenticado":false,"erro":"TENTATIVAS_EXCEDIDAS","mensagem":"Muitas tentativas. Tente novamente mais tarde."}
+						""", JsonCompareMode.STRICT));
+
+		verify(authService, never()).autenticar(anyString(), anyString());
+	}
+
+	@Test
+	void devolve429QuandoApenasOEmailEstaBloqueadoMesmoComIpLiberado() throws Exception {
+		given(limitadorTentativasLogin.verificarEmail(anyString())).willReturn(Optional.of(Duration.ofSeconds(5)));
+
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(header().string(HttpHeaders.RETRY_AFTER, "5"));
+
+		verify(authService, never()).autenticar(anyString(), anyString());
+	}
+
+	@Test
+	void registraFalhaNoLimitadorQuandoCredenciaisSaoInvalidas() throws Exception {
+		given(authService.autenticar(anyString(), anyString())).willReturn(ResultadoAutenticacao.falha());
+
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "senha-errada")))
+				.andExpect(status().isUnauthorized());
+
+		verify(limitadorTentativasLogin).registrarFalhaIp(anyString());
+		verify(limitadorTentativasLogin).registrarFalhaEmail(EMAIL_MARIA);
+		verify(limitadorTentativasLogin, never()).registrarSucessoEmail(anyString());
+	}
+
+	@Test
+	void registraSucessoNoLimitadorQuandoLoginFunciona() throws Exception {
+		autenticacaoComSucesso();
+
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+				.andExpect(status().isOk());
+
+		verify(limitadorTentativasLogin).registrarSucessoEmail(EMAIL_MARIA);
+		verify(limitadorTentativasLogin, never()).registrarFalhaIp(anyString());
+		verify(limitadorTentativasLogin, never()).registrarFalhaEmail(anyString());
 	}
 
 	@Test

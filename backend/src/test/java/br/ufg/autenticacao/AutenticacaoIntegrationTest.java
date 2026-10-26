@@ -156,6 +156,20 @@ class AutenticacaoIntegrationTest {
 	}
 
 	@Test
+	void bloqueiaLoginPorEmailApos5TentativasFalhasEDevolve429() {
+		String emailDedicadoAoTeste = "bloqueio-rate-limit@exemplo.com";
+
+		for (int i = 0; i < 5; i++) {
+			assertThat(login(emailDedicadoAoTeste, "senha-errada").status()).isEqualTo(401);
+		}
+
+		Resposta bloqueada = login(emailDedicadoAoTeste, "senha-errada");
+
+		assertThat(bloqueada.status()).isEqualTo(429);
+		assertThat(bloqueada.corpo()).contains("\"erro\":\"TENTATIVAS_EXCEDIDAS\"");
+	}
+
+	@Test
 	void respostaDeSucessoNaoContemHash() {
 		Resposta resposta = login(EMAIL_MARIA, SENHA_MARIA);
 
