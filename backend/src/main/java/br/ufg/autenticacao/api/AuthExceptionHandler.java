@@ -12,6 +12,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import br.ufg.autenticacao.domain.EmailJaCadastradoException;
+
 @RestControllerAdvice(basePackageClasses = AuthExceptionHandler.class)
 public class AuthExceptionHandler {
 
@@ -21,15 +23,20 @@ public class AuthExceptionHandler {
 			MethodArgumentNotValidException.class,
 			HttpMessageNotReadableException.class,
 			HttpMediaTypeNotSupportedException.class })
-	public ResponseEntity<LoginResponse> entradaInvalida() {
-		return ResponseEntity.badRequest().body(LoginResponse.entradaInvalida());
+	public ResponseEntity<ErroResponse> entradaInvalida() {
+		return ResponseEntity.badRequest().body(ErroResponse.entradaInvalida());
+	}
+
+	@ExceptionHandler(EmailJaCadastradoException.class)
+	public ResponseEntity<ErroResponse> emailJaCadastrado() {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ErroResponse.emailJaCadastrado());
 	}
 
 	@ExceptionHandler(Exception.class)
-	public ResponseEntity<LoginResponse> erroInterno(Exception ex) {
+	public ResponseEntity<ErroResponse> erroInterno(Exception ex) {
 		UUID id = UUID.randomUUID();
-		log.error("Erro ao autenticar [id={}]", id, ex);
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(LoginResponse.erroInterno());
+		log.error("Erro ao processar autenticação [id={}]", id, ex);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErroResponse.erroInterno());
 	}
 
 }

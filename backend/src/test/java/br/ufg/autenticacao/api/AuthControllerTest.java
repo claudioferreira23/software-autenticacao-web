@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -25,15 +27,21 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.json.JsonCompareMode;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
+import br.ufg.autenticacao.config.CorsConfig;
+import br.ufg.autenticacao.config.SecurityConfig;
 import br.ufg.autenticacao.domain.AuthService;
+import br.ufg.autenticacao.domain.EmailJaCadastradoException;
 import br.ufg.autenticacao.domain.IdentidadeUsuario;
 import br.ufg.autenticacao.domain.ResultadoAutenticacao;
 
 @WebMvcTest(AuthController.class)
+@Import({ SecurityConfig.class, CorsConfig.class })
 @ExtendWith(OutputCaptureExtension.class)
 class AuthControllerTest {
 
@@ -61,7 +69,7 @@ class AuthControllerTest {
 	void devolve200ComAIdentidadeDoUsuario() throws Exception {
 		autenticacaoComSucesso();
 
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
 				.andExpect(status().isOk())
 				.andExpect(content().json("""
 						{"autenticado":true,"usuario":{"id":"7f1c2a54-3b9e-4c1d-9a2f-5e6b7c8d9e0f","nome":"Maria","email":"maria@exemplo.com"}}
@@ -74,7 +82,7 @@ class AuthControllerTest {
 	void devolve401ComCorpoECabecalhoDoContrato() throws Exception {
 		given(authService.autenticar(anyString(), anyString())).willReturn(ResultadoAutenticacao.falha());
 
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "senha-errada")))
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "senha-errada")))
 				.andExpect(status().isUnauthorized())
 				.andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "FormLogin realm=\"autenticacao\""))
 				.andExpect(content().json("""
@@ -97,10 +105,10 @@ class AuthControllerTest {
 	@ParameterizedTest(name = "{0}")
 	@MethodSource("entradasInvalidas")
 	void devolve400ParaEntradaInvalida(String caso, String contentType, String conteudo) throws Exception {
-		mockMvc.perform(post(URL).contentType(contentType).content(conteudo))
+		mockMvc.perform(post(URL).with(csrf()).contentType(contentType).content(conteudo))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().json("""
-						{"autenticado":false,"erro":"ENTRADA_INVALIDA"}
+						{"erro":"ENTRADA_INVALIDA"}
 						""", JsonCompareMode.STRICT));
 	}
 
@@ -108,7 +116,7 @@ class AuthControllerTest {
 	void aceitaSenhaComExatamente128Caracteres() throws Exception {
 		autenticacaoComSucesso();
 
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "a".repeat(128))))
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "a".repeat(128))))
 				.andExpect(status().isOk());
 	}
 
@@ -116,7 +124,7 @@ class AuthControllerTest {
 	void aceitaEmailComExatamente254Caracteres() throws Exception {
 		autenticacaoComSucesso();
 
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(emailComTamanho(254), SENHA_MARIA)))
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(emailComTamanho(254), SENHA_MARIA)))
 				.andExpect(status().isOk());
 	}
 
@@ -124,7 +132,7 @@ class AuthControllerTest {
 	void repassaOEmailNormalizadoAoAuthService() throws Exception {
 		autenticacaoComSucesso();
 
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo("  Maria@Exemplo.COM ", SENHA_MARIA)))
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo("  Maria@Exemplo.COM ", SENHA_MARIA)))
 				.andExpect(status().isOk());
 
 		verify(authService).autenticar(EMAIL_MARIA, SENHA_MARIA);
@@ -135,15 +143,15 @@ class AuthControllerTest {
 		given(authService.autenticar(anyString(), anyString()))
 				.willThrow(new IllegalStateException("detalhe-interno-do-servidor"));
 
-		String resposta = mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+		String resposta = mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
 				.andExpect(status().isInternalServerError())
 				.andExpect(content().json("""
-						{"autenticado":false,"erro":"ERRO_INTERNO"}
+						{"erro":"ERRO_INTERNO"}
 						""", JsonCompareMode.STRICT))
 				.andReturn().getResponse().getContentAsString();
 
 		assertThat(resposta).doesNotContain("detalhe-interno-do-servidor", "IllegalStateException", "id");
-		assertThat(saida.getOut()).containsPattern("Erro ao autenticar \\[id=[0-9a-f-]{36}\\]");
+		assertThat(saida.getOut()).containsPattern("Erro ao processar autenticação \\[id=[0-9a-f-]{36}\\]");
 	}
 
 	@Test
@@ -166,15 +174,83 @@ class AuthControllerTest {
 	@Test
 	void registraUmaLinhaPorTentativaSemEmailESenha(CapturedOutput saida) throws Exception {
 		autenticacaoComSucesso();
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)));
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)));
 
 		given(authService.autenticar(anyString(), anyString())).willReturn(ResultadoAutenticacao.falha());
-		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "senha-errada")));
+		mockMvc.perform(post(URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, "senha-errada")));
 
 		String log = saida.getOut();
 		assertThat(log.lines().filter(linha -> linha.contains("Tentativa de autenticação"))).hasSize(2);
 		assertThat(log).contains("resultado=SUCESSO", "resultado=FALHA")
 				.doesNotContain(EMAIL_MARIA, SENHA_MARIA, "senha-errada");
+	}
+
+	@Test
+	void criaSessaoRecuperaIdentidadeEEncerraSessao() throws Exception {
+		autenticacaoComSucesso();
+
+		MvcResult login = mockMvc.perform(post(URL).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+				.andExpect(status().isOk())
+				.andReturn();
+
+		mockMvc.perform(get("/api/auth/me").session((org.springframework.mock.web.MockHttpSession) login.getRequest().getSession()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.email").value(EMAIL_MARIA));
+
+		mockMvc.perform(post("/api/auth/logout")
+				.session((org.springframework.mock.web.MockHttpSession) login.getRequest().getSession(false))
+				.with(csrf()))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(get("/api/auth/me"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.erro").value("NAO_AUTENTICADO"));
+	}
+
+	@Test
+	void cadastraUsuarioNormalizado() throws Exception {
+		given(authService.cadastrar("Maria", EMAIL_MARIA, SENHA_MARIA))
+				.willReturn(new IdentidadeUsuario(ID_MARIA, "Maria", EMAIL_MARIA));
+
+		mockMvc.perform(post("/api/auth/cadastro").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"nome":"  Maria  ","email":"  Maria@Exemplo.COM ","senha":"Senha-Correta-123"}
+						"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.email").value(EMAIL_MARIA))
+				.andExpect(jsonPath("$.senha").doesNotExist())
+				.andExpect(jsonPath("$.senhaHash").doesNotExist());
+	}
+
+	@Test
+	void devolve409ParaEmailJaCadastrado() throws Exception {
+		given(authService.cadastrar(anyString(), anyString(), anyString()))
+				.willThrow(new EmailJaCadastradoException());
+
+		mockMvc.perform(post("/api/auth/cadastro").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"nome":"Maria","email":"maria@exemplo.com","senha":"Senha-Correta-123"}
+						"""))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.erro").value("EMAIL_JA_CADASTRADO"));
+	}
+
+	@Test
+	void exigeCsrfEmOperacoesQueAlteramEstado() throws Exception {
+		mockMvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(corpo(EMAIL_MARIA, SENHA_MARIA)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.erro").value("ACESSO_NEGADO"));
+	}
+
+	@Test
+	void disponibilizaTokenCsrf() throws Exception {
+		mockMvc.perform(get("/api/auth/csrf"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.headerName").isNotEmpty())
+				.andExpect(jsonPath("$.token").isNotEmpty());
 	}
 
 	private static String emailComTamanho(int tamanho) {

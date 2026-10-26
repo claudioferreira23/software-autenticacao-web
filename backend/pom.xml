@@ -11,11 +11,12 @@
 	<groupId>br.ufg.autenticacao</groupId>
 	<artifactId>autenticacao-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>autenticacao-api</name>
-	<description>API de autenticação de usuários da APS de Domínios de Software (UFG)</description>
+	<name>Portal DS API</name>
+	<description>API de autenticação de usuários do Portal DS</description>
 	<properties>
 		<java.version>21</java.version>
 		<bcprov.version>1.86</bcprov.version>
+		<springdoc.version>3.2.0</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -39,8 +40,13 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-crypto</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
@@ -67,6 +73,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
