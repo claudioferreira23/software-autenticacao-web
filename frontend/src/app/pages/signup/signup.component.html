@@ -1,45 +1,58 @@
 <app-default-login-layout
-    title="Sign in and start today!t"
-    primaryBtnText="Signup Now"
-    secondaryBtnText="Login Now"
-    (submit)="submit()"
-    (navigate)="navigate()"
-    [disablePrimaryBtn]="!signupForm.valid"
+  title="Crie sua conta"
+  [primaryBtnText]="isSubmitting() ? 'Criando conta...' : 'Cadastrar'"
+  secondaryBtnText="Já possui uma conta?"
+  (submit)="submit()"
+  (navigate)="navigateToLogin()"
+  [disablePrimaryBtn]="signupForm.invalid || isSubmitting()"
+  [loading]="isSubmitting()"
 >
-    <form [formGroup]="signupForm">
-        <app-primary-input
-            formControlName="name"
-            inputName="name"
-            type="text"
-            label="Your name"
-            placeholder="John Doe"
-        >
-            <img src="/assets/svg/email-icon.svg"/>
-        </app-primary-input>
-        <app-primary-input
-            formControlName="email"
-            inputName="email"
-            type="email"
-            label="Email"
-            placeholder="johndoe@gmail.com"
-        >
-            <img src="/assets/svg/email-icon.svg"/>
-        </app-primary-input>
-        <app-primary-input
-            formControlName="password"
-            inputName="password"
-            type="password"
-            label="Your Password"
-        >
-        <img src="/assets/svg/password-icon.svg"/>
+  <form [formGroup]="signupForm" (ngSubmit)="submit()">
+    <app-primary-input
+      formControlName="name"
+      inputName="name"
+      type="text"
+      autocomplete="name"
+      label="Nome completo"
+      placeholder="João da Silva"
+      [invalid]="signupForm.controls.name.touched && signupForm.controls.name.invalid"
+      [errorMessage]="nameErrorMessage()"
+    >
+      <img src="/assets/svg/email-icon.svg" alt="" />
     </app-primary-input>
     <app-primary-input
-        formControlName="passwordConfirm"
-        inputName="passwordConfirm"
-        type="password"
-        label="Confirm your Password"
+      formControlName="email"
+      inputName="email"
+      type="email"
+      autocomplete="email"
+      label="E-mail"
+      placeholder="nome@exemplo.com"
+      [invalid]="signupForm.controls.email.touched && signupForm.controls.email.invalid"
+      [errorMessage]="emailErrorMessage()"
     >
-        <img src="/assets/svg/password-icon.svg"/>
+      <img src="/assets/svg/email-icon.svg" alt="" />
     </app-primary-input>
-    </form>
+    <app-primary-input
+      formControlName="password"
+      inputName="password"
+      type="password"
+      autocomplete="new-password"
+      label="Senha"
+      [invalid]="signupForm.controls.password.touched && signupForm.controls.password.invalid"
+      [errorMessage]="passwordErrorMessage()"
+    >
+      <img src="/assets/svg/password-icon.svg" alt="" />
+    </app-primary-input>
+    <app-primary-input
+      formControlName="passwordConfirm"
+      inputName="passwordConfirm"
+      type="password"
+      autocomplete="new-password"
+      label="Confirme sua senha"
+      [invalid]="passwordConfirmationInvalid()"
+      [errorMessage]="passwordConfirmationErrorMessage()"
+    >
+      <img src="/assets/svg/password-icon.svg" alt="" />
+    </app-primary-input>
+  </form>
 </app-default-login-layout>

@@ -1,5 +1,7 @@
 package br.ufg.autenticacao.config;
 
+import java.time.Clock;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +15,11 @@ public class AutenticacaoConfig {
 	@Bean
 	AuthService authService(UserRepository userRepository, PasswordHasher passwordHasher) {
 		return new AuthService(userRepository, passwordHasher);
+	}
+
+	@Bean
+	Clock clock() {
+		return Clock.systemUTC();
 	}
 
 }

@@ -1,26 +1,32 @@
 <main>
-    <section class="form-section">
-        <img src="/assets/svg/logo.svg"/>
-       <h2>{{ title }}</h2>
-       <ng-content></ng-content>
-       <div class="btn-wrapper">
-            <button 
-                class="btn-primary" 
-                (click)="submit()"
-                [disabled]="disablePrimaryBtn"
-            >
-                {{ primaryBtnText }}
-            </button>
-            <div class="divider">
-                <div></div>
-                <span>or</span>
-                <div></div>
-            </div>
-            <button class="btn-secondary" (click)="navigate()">{{ secondaryBtnText }}</button>
-       </div>
-    </section>
-    <section class="main-section">
-        <h1>You Should, MoveIt!</h1>
-        <img src="/assets/svg/main-illustration.svg"/>
-    </section>
+  <section class="form-section">
+    <img src="/assets/svg/logo.svg" alt="Portal DS" />
+    <h2>{{ title }}</h2>
+    <ng-content></ng-content>
+    <div class="btn-wrapper">
+      <button
+        type="button"
+        class="btn-primary"
+        (click)="submit()"
+        [disabled]="disablePrimaryBtn"
+        [attr.aria-busy]="loading"
+      >
+        {{ primaryBtnText }}
+      </button>
+      @if (secondaryBtnText) {
+        <div class="divider">
+          <div></div>
+          <span>ou</span>
+          <div></div>
+        </div>
+        <button type="button" class="btn-secondary" (click)="navigate()">
+          {{ secondaryBtnText }}
+        </button>
+      }
+    </div>
+  </section>
+  <section class="main-section">
+    <h1>Bem-vindo ao Portal DS</h1>
+    <img src="/assets/svg/main-illustration.svg" alt="Pessoa se exercitando" />
+  </section>
 </main>

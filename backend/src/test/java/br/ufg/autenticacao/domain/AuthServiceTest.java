@@ -1,6 +1,7 @@
 package br.ufg.autenticacao.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -68,6 +69,24 @@ class AuthServiceTest {
 	void identidadeDevolvidaNaoTemCampoDeHash() {
 		assertThat(Arrays.stream(IdentidadeUsuario.class.getRecordComponents()).map(componente -> componente.getName()))
 				.containsExactly("id", "nome", "email");
+	}
+
+	@Test
+	void cadastraUsuarioComHashSemExporSenha() {
+		IdentidadeUsuario identidade = authService.cadastrar("João", "joao@exemplo.com", "Senha-Segura-123");
+
+		Usuario salvo = userRepository.buscarPorEmail("joao@exemplo.com").orElseThrow();
+		assertThat(identidade).isEqualTo(new IdentidadeUsuario(salvo.id(), "João", "joao@exemplo.com"));
+		assertThat(salvo.senhaHash()).isEqualTo(FakePasswordHasher.hashDe("Senha-Segura-123"));
+	}
+
+	@Test
+	void recusaEmailJaCadastradoSemGerarNovoHash() {
+		int hashesAntes = passwordHasher.hashesGerados().size();
+
+		assertThatThrownBy(() -> authService.cadastrar("Outra Maria", EMAIL_MARIA, "Outra-Senha-123"))
+				.isInstanceOf(EmailJaCadastradoException.class);
+		assertThat(passwordHasher.hashesGerados()).hasSize(hashesAntes);
 	}
 
 }

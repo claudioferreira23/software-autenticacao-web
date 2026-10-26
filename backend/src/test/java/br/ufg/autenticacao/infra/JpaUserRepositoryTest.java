@@ -1,6 +1,7 @@
 package br.ufg.autenticacao.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 
@@ -11,6 +12,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.context.annotation.Import;
 
 import br.ufg.autenticacao.TestcontainersConfiguration;
+import br.ufg.autenticacao.domain.EmailJaCadastradoException;
 import br.ufg.autenticacao.domain.Usuario;
 
 @DataJpaTest
@@ -51,6 +53,23 @@ class JpaUserRepositoryTest {
 		usuarioJpaRepository.saveAndFlush(new UsuarioEntity("Maria", "maria@exemplo.com", "hash-da-maria"));
 
 		assertThat(jpaUserRepository.buscarPorEmail("x' OR '1'='1")).isEmpty();
+	}
+
+	@Test
+	void salvaUsuarioEConsultaExistenciaPorEmail() {
+		Usuario salvo = jpaUserRepository.salvar("João", "joao@exemplo.com", "hash-do-joao");
+
+		assertThat(salvo.id()).isNotNull();
+		assertThat(jpaUserRepository.existePorEmail("joao@exemplo.com")).isTrue();
+		assertThat(jpaUserRepository.buscarPorEmail("joao@exemplo.com")).contains(salvo);
+	}
+
+	@Test
+	void convertaViolacaoDeUnicidadeEmEmailJaCadastradoAoSalvar() {
+		usuarioJpaRepository.saveAndFlush(new UsuarioEntity("Maria", "maria@exemplo.com", "hash-da-maria"));
+
+		assertThatThrownBy(() -> jpaUserRepository.salvar("Outra Maria", "maria@exemplo.com", "outro-hash"))
+				.isInstanceOf(EmailJaCadastradoException.class);
 	}
 
 }

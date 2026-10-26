@@ -1,0 +1,23 @@
+<main>
+  <section class="profile-card">
+    <img src="/assets/svg/logo.svg" alt="Portal DS" />
+    <p class="eyebrow">Área autenticada</p>
+    <h1>Olá, {{ user()?.nome }}</h1>
+    <p class="description">Sua sessão está ativa e esta página é protegida.</p>
+
+    <dl>
+      <div>
+        <dt>Nome</dt>
+        <dd>{{ user()?.nome }}</dd>
+      </div>
+      <div>
+        <dt>E-mail</dt>
+        <dd>{{ user()?.email }}</dd>
+      </div>
+    </dl>
+
+    <button type="button" (click)="logout()" [disabled]="isLoggingOut()">
+      {{ isLoggingOut() ? 'Saindo...' : 'Sair' }}
+    </button>
+  </section>
+</main>
