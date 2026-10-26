@@ -29,4 +29,13 @@ public class AuthService {
 		return ResultadoAutenticacao.falha();
 	}
 
+	public IdentidadeUsuario cadastrar(String nome, String email, String senha) {
+		if (userRepository.existePorEmail(email)) {
+			throw new EmailJaCadastradoException();
+		}
+
+		Usuario salvo = userRepository.salvar(nome, email, passwordHasher.gerarHash(senha));
+		return new IdentidadeUsuario(salvo.id(), salvo.nome(), salvo.email());
+	}
+
 }
