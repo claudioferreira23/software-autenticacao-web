@@ -1,0 +1,36 @@
+digraph atividades {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=12, nodesep=0.5, ranksep=0.38, bgcolor="white", pad=0.3, splines=spline];
+  node  [fontname="DejaVu Sans", fontsize=10, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#37474F", penwidth=1.2, margin="0.18,0.07"];
+  edge  [fontname="DejaVu Sans", fontsize=9, color="#37474F", penwidth=1.1, arrowsize=0.75];
+
+  inicio  [shape=circle, label="", width=0.25, style=filled, fillcolor="#263238"];
+  f200 [shape=doublecircle, label="", width=0.18, style=filled, fillcolor="#263238"];
+  f400 [shape=doublecircle, label="", width=0.18, style=filled, fillcolor="#263238"];
+  f401 [shape=doublecircle, label="", width=0.18, style=filled, fillcolor="#263238"];
+
+  receber  [label=<Receber POST /api/auth/login<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">DispatcherServlet (origem já liberada pela pré-verificação CORS)</FONT>>];
+  converter[label=<Converter o JSON em LoginRequest<BR/>e normalizar o e-mail (trim, minúsculas)<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">Spring MVC + construtor do record</FONT>>];
+  dval     [shape=diamond, label="formato\nválido?", fontsize=9, fillcolor="#FFFDE7", margin="0.05,0.05"];
+  r400     [label=<Responder <B>400 Bad Request</B><BR/>{"autenticado": false, "erro": "ENTRADA_INVALIDA"}<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthExceptionHandler</FONT>>, fillcolor="#FFF3E0", color="#E65100"];
+
+  buscar   [label=<Buscar usuário pelo e-mail<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">UserRepository.buscarPorEmail → JpaUserRepository → PostgreSQL</FONT>>];
+  escolher [label=<Escolher o hash a verificar:<BR/>hash armazenado, se o usuário existe;<BR/><I>hashFicticio</I>, caso contrário<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthService</FONT>>, fillcolor="#ECEFF1"];
+  verificar[label=<Executar verificar(senha, hash)<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">Argon2PasswordHasher — uma única execução do Argon2id em qualquer caso</FONT>>];
+  dok      [shape=diamond, label="usuário existe\ne senha confere?", fontsize=9, fillcolor="#FFFDE7", margin="0.05,0.05"];
+  sucesso  [label=<ResultadoAutenticacao.sucesso(identidade)<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthService</FONT>>];
+  falha    [label=<ResultadoAutenticacao.falha()<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthService</FONT>>];
+  log1     [label=<Registrar tentativa: SUCESSO<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthController (horário, origem, resultado)</FONT>>, fillcolor="#ECEFF1"];
+  log2     [label=<Registrar tentativa: FALHA<BR/><FONT POINT-SIZE="8" COLOR="#546E7A">AuthController (horário, origem, resultado)</FONT>>, fillcolor="#ECEFF1"];
+  r200     [label=<Responder <B>200 OK</B><BR/>{"autenticado": true, "usuario": {id, nome, email}}>, fillcolor="#E8F5E9", color="#2E7D32"];
+  r401     [label=<Responder <B>401 Unauthorized</B> + WWW-Authenticate<BR/>{"autenticado": false, "erro": "CREDENCIAIS_INVALIDAS"}>, fillcolor="#FFEBEE", color="#C62828"];
+
+  inicio -> receber -> converter -> dval;
+  dval -> r400 [label=" [não]"]; r400 -> f400;
+  dval -> buscar [label=" [sim]"];
+  buscar -> escolher -> verificar -> dok;
+  dok -> sucesso [label=" [sim]"]; dok -> falha [label=" [não]"];
+  sucesso -> log1 -> r200 -> f200;
+  falha -> log2 -> r401 -> f401;
+  { rank=same; dval; r400; }
+  { rank=same; sucesso; falha; }
+}

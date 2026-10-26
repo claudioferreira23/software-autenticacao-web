@@ -1,0 +1,76 @@
+digraph classes {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=12, nodesep=0.35, ranksep=0.55, bgcolor="white", pad=0.3, newrank=true, splines=spline];
+  node  [fontname="DejaVu Sans", fontsize=9.5, shape=plain];
+  edge  [fontname="DejaVu Sans", fontsize=8.5, color="#37474F", penwidth=1.0, arrowsize=0.75];
+  subgraph cluster_front {
+    label=<<B>frontend</B> — Angular (TypeScript)>; labeljust=l; style="rounded,filled"; fillcolor="#E3F2FD"; color="#1565C0"; penwidth=1.3;
+  LoginComponent [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«component»</FONT><BR/><B>LoginComponent</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- formulario: FormGroup<BR/>- usuario: UsuarioResponse<BR/>- mensagemErro: string</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ entrar(): void</TD></TR></TABLE>>];
+  LoginService [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«injectable»</FONT><BR/><B>LoginService</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- http: HttpClient</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ login(email: string, senha: string):<BR/>    Observable&lt;LoginResponse&gt;</TD></TR></TABLE>>];
+  LoginResponseTS [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«type»</FONT><BR/><B>LoginResponse</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ autenticado: boolean<BR/>+ usuario?: { id, nome, email }<BR/>+ erro?: string<BR/>+ mensagem?: string</TD></TR></TABLE>>];
+    { rank=same; LoginComponent; LoginService; LoginResponseTS; }
+  }
+  subgraph cluster_back {
+    label=<<B>backend</B> — br.ufg.autenticacao (Java 21 / Spring Boot)>; labeljust=l; style="rounded,filled"; fillcolor="#E8F5E9"; color="#2E7D32"; penwidth=1.3;
+  subgraph cluster_api {
+    label=<<I>api</I> — controle>; labeljust=l; style="rounded,filled"; fillcolor="#F1F8E9"; color="#66BB6A"; penwidth=1.3;
+  AuthController [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@RestController»</FONT><BR/><B>AuthController</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- authService: AuthService</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ login(@Valid req: LoginRequest,<BR/>    http: HttpServletRequest):<BR/>    ResponseEntity&lt;LoginResponse&gt;</TD></TR></TABLE>>];
+  LoginRequest [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>LoginRequest</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ email: String  {@NotBlank @Email @Size(max=254)}<BR/>+ senha: String  {@NotEmpty @Size(max=128)}</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">«construtor» normaliza e-mail (trim, minúsculas)<BR/>+ toString(): String  {senha mascarada}</TD></TR></TABLE>>];
+  LoginResponse [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>LoginResponse</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ autenticado: boolean<BR/>+ usuario: UsuarioResponse<BR/>+ erro: String<BR/>+ mensagem: String</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ sucesso(u): LoginResponse<BR/>+ entradaInvalida(): LoginResponse<BR/>+ credenciaisInvalidas(): LoginResponse<BR/>+ erroInterno(): LoginResponse</TD></TR></TABLE>>];
+  UsuarioResponse [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>UsuarioResponse</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ id: UUID<BR/>+ nome: String<BR/>+ email: String</TD></TR></TABLE>>];
+  AuthExceptionHandler [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@RestControllerAdvice»</FONT><BR/><B>AuthExceptionHandler</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ entradaInvalida(): ResponseEntity  [400]<BR/>+ erroInterno(e): ResponseEntity  [500]</TD></TR></TABLE>>];
+    { rank=same; AuthExceptionHandler; AuthController; LoginRequest; }
+    { rank=same; LoginResponse; UsuarioResponse; }
+  }
+  subgraph cluster_cfg {
+    label=<<I>config</I>>; labeljust=l; style="rounded,filled"; fillcolor="#F1F8E9"; color="#66BB6A"; penwidth=1.3;
+  AutenticacaoConfig [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Configuration»</FONT><BR/><B>AutenticacaoConfig</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ authService(r: UserRepository,<BR/>    h: PasswordHasher): AuthService  «@Bean»</TD></TR></TABLE>>];
+  CorsConfig [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Configuration»</FONT><BR/><B>CorsConfig</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- corsProperties: CorsProperties</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ addCorsMappings(reg): void<BR/>  /api/** · POST, OPTIONS</TD></TR></TABLE>>];
+  }
+  subgraph cluster_dom {
+    label=<<I>domain</I> — negócio>; labeljust=l; style="rounded,filled"; fillcolor="#FFFFFF"; color="#66BB6A"; penwidth=1.3;
+  AuthService [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFDE7" COLOR="#37474F"><TR><TD><B>AuthService</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- userRepository: UserRepository<BR/>- passwordHasher: PasswordHasher<BR/>- hashFicticio: String  {readOnly}</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ AuthService(r: UserRepository, h: PasswordHasher)<BR/>+ autenticar(email: String, senha: String):<BR/>    ResultadoAutenticacao</TD></TR></TABLE>>];
+  UserRepository [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«interface»</FONT><BR/><B><I>UserRepository</I></B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ buscarPorEmail(email: String): Optional&lt;Usuario&gt;</TD></TR></TABLE>>];
+  PasswordHasher [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«interface»</FONT><BR/><B><I>PasswordHasher</I></B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ verificar(senha, hashArmazenado): boolean<BR/>+ gerarHash(senha: String): String</TD></TR></TABLE>>];
+  ResultadoAutenticacao [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>ResultadoAutenticacao</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ autenticado: boolean<BR/>+ identidade: IdentidadeUsuario</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ sucesso(i): ResultadoAutenticacao<BR/>+ falha(): ResultadoAutenticacao</TD></TR></TABLE>>];
+  IdentidadeUsuario [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>IdentidadeUsuario</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ id: UUID<BR/>+ nome: String<BR/>+ email: String</TD></TR></TABLE>>];
+  Usuario [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«record»</FONT><BR/><B>Usuario</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ id: UUID<BR/>+ nome: String<BR/>+ email: String<BR/>+ senhaHash: String</TD></TR></TABLE>>];
+    { rank=same; UserRepository; AuthService; PasswordHasher; }
+    { rank=same; Usuario; ResultadoAutenticacao; IdentidadeUsuario; }
+  }
+  subgraph cluster_inf {
+    label=<<I>infra</I> — persistência e criptografia>; labeljust=l; style="rounded,filled"; fillcolor="#F1F8E9"; color="#66BB6A"; penwidth=1.3;
+  JpaUserRepository [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Repository»</FONT><BR/><B>JpaUserRepository</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- usuarioJpaRepository: UsuarioJpaRepository</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ buscarPorEmail(email): Optional&lt;Usuario&gt;</TD></TR></TABLE>>];
+  UsuarioJpaRepository [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«interface» JpaRepository&lt;UsuarioEntity, UUID&gt;</FONT><BR/><B><I>UsuarioJpaRepository</I></B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ findByEmail(email: String): Optional&lt;UsuarioEntity&gt;</TD></TR></TABLE>>];
+  UsuarioEntity [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Entity» tabela usuarios</FONT><BR/><B>UsuarioEntity</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- id: UUID  {@Id @GeneratedValue(UUID)}<BR/>- nome: String  {length=120}<BR/>- email: String  {unique, length=254}<BR/>- senhaHash: String  {length=255}</TD></TR></TABLE>>];
+  Argon2PasswordHasher [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Component»</FONT><BR/><B>Argon2PasswordHasher</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">- encoder: Argon2PasswordEncoder<BR/>  {sal 16 B, hash 32 B, p=1, m=19456 KiB, t=2}</TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ verificar(senha, hash): boolean<BR/>  {valida formato PHC; erro → false}<BR/>+ gerarHash(senha): String</TD></TR></TABLE>>];
+  SeedUsuariosExemplo [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#FFFFFF" COLOR="#37474F"><TR><TD><FONT POINT-SIZE="8">«@Component» «@Profile(dev)»</FONT><BR/><B>SeedUsuariosExemplo</B></TD></TR><TR><TD SIDES="T" BORDER="1" ALIGN="LEFT" BALIGN="LEFT">+ run(): void  {cria usuários de exemplo}</TD></TR></TABLE>>];
+    { rank=same; JpaUserRepository; Argon2PasswordHasher; SeedUsuariosExemplo; }
+    { rank=same; UsuarioJpaRepository; UsuarioEntity; }
+  }
+  }
+
+  LoginComponent -> LoginService [arrowhead=vee, label=" usa"];
+  LoginService -> LoginResponseTS [style=dashed, arrowhead=vee, label=" «use»"];
+  LoginService -> AuthController [style=dashed, arrowhead=vee, color="#1565C0", label=<  HTTP POST /api/auth/login<BR/>  JSON {email, senha}>];
+  AuthController -> AuthService [arrowhead=vee, label=" delega", constraint=false];
+  AuthController -> LoginRequest [style=dashed, arrowhead=vee, label=" recebe"];
+  AuthController -> LoginResponse [style=dashed, arrowhead=vee, label=" produz"];
+  AuthExceptionHandler -> LoginResponse [style=dashed, arrowhead=vee, label=" produz"];
+  LoginResponse -> UsuarioResponse [arrowhead=vee, label=" 0..1"];
+  AutenticacaoConfig -> AuthService [style=dashed, arrowhead=vee, label=" «create»"];
+  AuthService -> UserRepository [arrowhead=vee, constraint=false];
+  AuthService -> PasswordHasher [arrowhead=vee, constraint=false];
+  AuthService -> ResultadoAutenticacao [style=dashed, arrowhead=vee, label=" produz"];
+  ResultadoAutenticacao -> IdentidadeUsuario [arrowhead=vee, label=" 0..1"];
+  UserRepository -> Usuario [style=dashed, arrowhead=vee, label=" retorna"];
+  UserRepository -> JpaUserRepository [style=dashed, dir=back, arrowtail=onormal];
+  PasswordHasher -> Argon2PasswordHasher [style=dashed, dir=back, arrowtail=onormal];
+  JpaUserRepository -> UsuarioJpaRepository [arrowhead=vee, label=" usa"];
+  UsuarioJpaRepository -> UsuarioEntity [style=dashed, arrowhead=vee];
+  CorsConfig -> AutenticacaoConfig [style=invis];
+  LoginResponse -> UserRepository [style=invis];
+  UsuarioResponse -> AuthService [style=invis];
+  Usuario -> JpaUserRepository [style=invis];
+  IdentidadeUsuario -> SeedUsuariosExemplo [style=invis];
+  LoginRequest -> CorsConfig [style=invis];
+}

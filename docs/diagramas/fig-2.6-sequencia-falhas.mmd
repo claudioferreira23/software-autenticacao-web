@@ -1,0 +1,46 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Arial, sans-serif","fontSize":"15px","actorBkg":"#FFFFFF","actorBorder":"#37474F","actorTextColor":"#111111","signalColor":"#37474F","signalTextColor":"#111111","noteBkgColor":"#FFFDE7","noteBorderColor":"#9E9D24","activationBkgColor":"#E8F5E9","activationBorderColor":"#2E7D32","labelBoxBkgColor":"#ECEFF1","labelBoxBorderColor":"#37474F","loopTextColor":"#111111"},"sequence":{"mirrorActors":false,"showSequenceNumbers":true,"actorMargin":14,"messageMargin":24,"boxMargin":8}}}%%
+sequenceDiagram
+    autonumber
+    participant LS as LoginService<br/>(navegador)
+    participant DS as DispatcherServlet
+    participant EH as AuthExceptionHandler
+    participant CT as AuthController
+    participant SV as AuthService
+    participant RP as JpaUserRepository
+    participant PH as Argon2PasswordHasher
+    participant DB as PostgreSQL
+
+    LS-)DS: POST /api/auth/login {email, senha}
+    activate DS
+    alt formato inválido (campo vazio, e-mail mal formado, JSON ilegível ou Content-Type incorreto)
+        Note over DS: conversão ou validação @Valid falha<br/>antes de o AuthController ser chamado
+        DS->>EH: entradaInvalida()
+        EH-->>DS: ResponseEntity 400
+        DS--)LS: 400 {autenticado: false, erro: "ENTRADA_INVALIDA"}
+    else formato válido
+        DS->>CT: login(requisicao)
+        activate CT
+        CT->>SV: autenticar(email, senha)
+        activate SV
+        SV->>RP: buscarPorEmail(email)
+        RP->>DB: SELECT … FROM usuarios WHERE email = ?
+        alt usuário inexistente
+            DB-->>RP: 0 linhas
+            RP-->>SV: Optional.empty()
+            SV->>PH: verificar(senha, hashFicticio)
+            Note over SV,PH: iguala o tempo de resposta<br/>ao do caso de senha incorreta
+            PH-->>SV: false
+        else senha incorreta
+            DB-->>RP: 1 linha
+            RP-->>SV: Optional[Usuario]
+            SV->>PH: verificar(senha, senhaHash)
+            PH-->>SV: false
+        end
+        SV-->>CT: ResultadoAutenticacao.falha
+        deactivate SV
+        Note over CT: registra tentativa FALHA
+        CT-->>DS: ResponseEntity 401
+        deactivate CT
+        DS--)LS: 401 + WWW-Authenticate: FormLogin realm="autenticacao"<br/>{autenticado: false, erro: "CREDENCIAIS_INVALIDAS"}
+    end
+    deactivate DS

@@ -1,0 +1,45 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Arial, sans-serif","fontSize":"15px","actorBkg":"#FFFFFF","actorBorder":"#37474F","actorTextColor":"#111111","signalColor":"#37474F","signalTextColor":"#111111","noteBkgColor":"#FFFDE7","noteBorderColor":"#9E9D24","activationBkgColor":"#E8F5E9","activationBorderColor":"#2E7D32","labelBoxBkgColor":"#ECEFF1","labelBoxBorderColor":"#37474F","loopTextColor":"#111111"},"sequence":{"mirrorActors":false,"showSequenceNumbers":true,"actorMargin":14,"messageMargin":24,"boxMargin":8}}}%%
+sequenceDiagram
+    autonumber
+    actor U as Usuário
+    box rgb(227,242,253) Navegador — SPA Angular, origem localhost:4200
+        participant LC as LoginComponent
+        participant LS as LoginService
+    end
+    box rgb(232,245,233) Servidor de Aplicação — Spring Boot, porta 8080
+        participant DS as DispatcherServlet
+        participant CT as AuthController
+        participant SV as AuthService
+        participant RP as JpaUserRepository
+        participant PH as Argon2PasswordHasher
+    end
+    box rgb(243,229,245) Repositório de Dados
+        participant DB as PostgreSQL
+    end
+
+    U->>LC: e-mail, senha, "Entrar"
+    LC->>LS: login(email, senha)
+    LS-)DS: OPTIONS /api/auth/login (pré-verificação CORS)
+    DS--)LS: 200 OK, Access-Control-Allow-Origin
+    LS-)DS: POST /api/auth/login {email, senha}
+    activate DS
+    Note over DS: JSON → LoginRequest<br/>normalização e @Valid
+    DS->>CT: login(requisicao)
+    activate CT
+    CT->>SV: autenticar(email, senha)
+    activate SV
+    SV->>RP: buscarPorEmail(email)
+    RP->>DB: SELECT … FROM usuarios WHERE email = ?
+    DB-->>RP: 1 linha
+    RP-->>SV: Optional[Usuario]
+    SV->>PH: verificar(senha, senhaHash)
+    PH-->>SV: true
+    SV-->>CT: ResultadoAutenticacao.sucesso
+    deactivate SV
+    Note over CT: registra tentativa SUCESSO
+    CT-->>DS: ResponseEntity 200 (LoginResponse)
+    deactivate CT
+    DS--)LS: 200 OK {autenticado: true, usuario}
+    deactivate DS
+    LS-->>LC: LoginResponse
+    LC-->>U: exibe usuário autenticado
