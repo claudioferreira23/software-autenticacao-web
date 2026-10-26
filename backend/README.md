@@ -26,6 +26,7 @@ cp .env.example .env
 | `DB_PASSWORD` | senha do banco |
 | `SEED_SENHA_PADRAO` | senha dos usuários de exemplo, usada só no perfil `dev` |
 | `SESSION_COOKIE_SECURE` | `false` no HTTP local; no perfil `prod` o padrão é `true` |
+| `CORS_ALLOWED_ORIGINS` | origens autorizadas a chamar a API via CORS com credenciais (padrão `http://localhost:4200`). **Obrigatório** fora do ambiente local. |
 
 O `.env` é ignorado pelo git e nunca deve ser commitado.
 
@@ -80,6 +81,16 @@ mantenha o token retornado apenas em memória e envie-o no cabeçalho `X-XSRF-TO
 O token também fica associado à sessão no servidor. A sessão expira após 30 minutos por
 padrão (`SESSION_TIMEOUT` pode alterar esse valor).
 
+Como o cookie é `SameSite=Lax`, o navegador só o envia em requisições do mesmo "site"
+(mesmo domínio registrável; subdomínios contam). Em produção, o frontend e esta API
+precisam ficar em domínios registráveis iguais (ex.: subdomínios de `portal-ds.com`) ou
+atrás do mesmo proxy reverso. Se precisarem ficar em domínios totalmente diferentes, o
+cookie teria que mudar para `SameSite=None` + `Secure`, o que não está configurado hoje.
+
+O endpoint `POST /api/auth/login` também limita tentativas malsucedidas por IP (20) e por
+e-mail (5) em janelas de 1 minuto, devolvendo `429` com o cabeçalho `Retry-After` quando o
+limite é atingido.
+
 ## Endpoints
 
 ### Cadastro
@@ -107,6 +118,7 @@ já cadastrado retorna `409` com o código `EMAIL_JA_CADASTRADO`.
 | 200 | sessão criada; o corpo traz `id`, `nome` e `email` do usuário |
 | 400 | entrada inválida (`ENTRADA_INVALIDA`) |
 | 401 | e-mail ou senha inválidos (`CREDENCIAIS_INVALIDAS`) |
+| 429 | muitas tentativas; aguarde o tempo do cabeçalho `Retry-After` (`TENTATIVAS_EXCEDIDAS`) |
 | 500 | erro interno (`ERRO_INTERNO`) |
 
 ### Usuário autenticado
