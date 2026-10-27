@@ -1,0 +1,50 @@
+<div class="input-wrapper" [class.is-invalid]="invalid">
+  <label [for]="inputName">{{ label }}</label>
+  <div class="input-content">
+    <input
+      [id]="inputName"
+      [name]="inputName"
+      [type]="displayedType"
+      [class.has-password-toggle]="type === 'password'"
+      [placeholder]="placeholder"
+      [attr.autocomplete]="autocomplete || null"
+      [value]="value"
+      [disabled]="disabled"
+      [attr.aria-invalid]="invalid"
+      [attr.aria-describedby]="invalid && errorMessage ? errorId : null"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+    />
+    @if (type === 'password') {
+      <button
+        type="button"
+        class="password-toggle"
+        [disabled]="disabled"
+        [attr.aria-label]="passwordVisible ? 'Ocultar senha' : 'Mostrar senha'"
+        [attr.aria-pressed]="passwordVisible"
+        (click)="togglePasswordVisibility()"
+      >
+        @if (passwordVisible) {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7M9.9 4.2A10.8 10.8 0 0 1 12 4c5.5 0 9 5.2 9 5.2a15.7 15.7 0 0 1-2.2 2.8M6.6 6.6A16.5 16.5 0 0 0 3 9.2S6.5 14.5 12 14.5c1 0 2-.2 2.8-.5"
+            />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 9.5S6.5 4 12 4s9 5.5 9 5.5S17.5 15 12 15 3 9.5 3 9.5Z" />
+            <circle cx="12" cy="9.5" r="2.5" />
+          </svg>
+        }
+      </button>
+    }
+    <div class="icon">
+      <ng-content></ng-content>
+    </div>
+  </div>
+  @if (invalid && errorMessage) {
+    <small class="field-error" [id]="errorId" role="alert" aria-live="polite">
+      {{ errorMessage }}
+    </small>
+  }
+</div>

@@ -1,0 +1,112 @@
+@use '../../../styles/variables' as *;
+
+main {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 32px;
+  background: linear-gradient(135deg, #f8f5ff 0%, $gray-bg 100%);
+
+  section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .main-section {
+    display: none;
+  }
+
+  .form-section {
+    width: min(100%, 500px);
+    padding: 48px 44px;
+    background-color: #ffffff;
+    border: 1px solid rgba(112, 1, 253, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(45, 22, 74, 0.12);
+
+    > img {
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 45px;
+      text-align: center;
+    }
+
+    .btn-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 30px;
+
+      .divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
+
+        font-size: 14px;
+        color: $gray-bg;
+        font-weight: 400;
+        text-transform: uppercase;
+
+        div {
+          flex-grow: 1;
+          height: 2px;
+          background-color: $gray-bg;
+        }
+      }
+
+      button {
+        width: 100%;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 500;
+        border: none;
+        background: transparent;
+        padding: 12px 24px;
+        cursor: pointer;
+
+        &:disabled {
+          opacity: 0.8;
+          cursor: not-allowed;
+        }
+
+        &.btn-primary {
+          background-color: $primary-color;
+          color: white;
+          box-shadow: 0px 8px 12px
+            rgba(148.23004603385925, 64.33935597538948, 255, 0.20000000298023224);
+        }
+
+        &.btn-secondary {
+          border: 1px solid $primary-color;
+          color: $primary-color;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 0;
+    background: #ffffff;
+
+    .form-section {
+      width: 100%;
+      min-height: 100dvh;
+      padding: 36px 24px;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+}

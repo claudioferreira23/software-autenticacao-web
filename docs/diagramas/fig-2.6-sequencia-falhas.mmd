@@ -1,0 +1,58 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Arial, sans-serif","fontSize":"15px","actorBkg":"#FFFFFF","actorBorder":"#37474F","actorTextColor":"#111111","signalColor":"#37474F","signalTextColor":"#111111","noteBkgColor":"#FFFDE7","noteBorderColor":"#9E9D24","activationBkgColor":"#E8F5E9","activationBorderColor":"#2E7D32","labelBoxBkgColor":"#ECEFF1","labelBoxBorderColor":"#37474F","loopTextColor":"#111111"},"sequence":{"mirrorActors":false,"showSequenceNumbers":true,"actorMargin":14,"messageMargin":24,"boxMargin":8}}}%%
+sequenceDiagram
+    autonumber
+    participant FA as AuthService<br/>(Angular)
+    participant PX as ng serve<br/>(proxy /api)
+    participant SF as Filtros do<br/>Spring Security
+    participant EH as AuthException<br/>Handler
+    participant CT as AuthController
+    participant LM as Limitador<br/>TentativasLogin
+    participant SV as AuthService
+    participant RP as JpaUser<br/>Repository
+    participant PH as Argon2Password<br/>Hasher
+    participant DB as PostgreSQL
+
+    FA-)PX: POST /api/auth/login {email, senha}<br/>Cookie + X-XSRF-TOKEN
+    PX-)SF: POST /api/auth/login
+    activate SF
+    alt token CSRF ausente ou diferente do guardado na sessão
+        SF--)FA: 403 {erro: "ACESSO_NEGADO"}
+    else formato inválido (campo vazio, e-mail mal formado, JSON ilegível ou Content-Type incorreto)
+        Note over SF: conversão ou validação @Valid falha<br/>antes de o AuthController ser chamado
+        SF->>EH: entradaInvalida()
+        EH-->>SF: ResponseEntity 400
+        SF--)FA: 400 {erro: "ENTRADA_INVALIDA"}
+    else IP ou e-mail acima do limite na janela de 1 minuto
+        SF->>CT: login(requisicao)
+        CT->>LM: verificarIp(ip), verificarEmail(email)
+        LM-->>CT: Optional[tempo restante]
+        CT--)FA: 429 + Retry-After {erro: "TENTATIVAS_EXCEDIDAS"}
+    else credenciais inválidas
+        SF->>CT: login(requisicao)
+        activate CT
+        CT->>LM: verificarIp(ip), verificarEmail(email)
+        LM-->>CT: sem bloqueio
+        CT->>SV: autenticar(email, senha)
+        activate SV
+        SV->>RP: buscarPorEmail(email)
+        RP->>DB: SELECT … FROM usuarios WHERE email = ?
+        alt usuário inexistente
+            DB-->>RP: 0 linhas
+            RP-->>SV: Optional.empty()
+            SV->>PH: verificar(senha, hashFicticio)
+            Note over SV,PH: iguala o tempo de resposta<br/>ao do caso de senha incorreta
+            PH-->>SV: false
+        else senha incorreta
+            DB-->>RP: 1 linha
+            RP-->>SV: Optional[Usuario]
+            SV->>PH: verificar(senha, senhaHash)
+            PH-->>SV: false
+        end
+        SV-->>CT: ResultadoAutenticacao.falha
+        deactivate SV
+        CT->>LM: registrarFalhaIp(ip), registrarFalhaEmail(email)
+        Note over CT: registra tentativa FALHA
+        CT--)FA: 401 + WWW-Authenticate: FormLogin realm="autenticacao"<br/>{autenticado: false, erro: "CREDENCIAIS_INVALIDAS"}
+        deactivate CT
+    end
+    deactivate SF

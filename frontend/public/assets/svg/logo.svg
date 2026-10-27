@@ -1,0 +1,9 @@
+<svg width="230" height="64" viewBox="0 0 230 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Portal DS</title>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#7001FD"/>
+  <path d="M13 27.5L32 18L51 27.5L32 37L13 27.5Z" fill="white"/>
+  <path d="M20 33V42C26.5 47 37.5 47 44 42V33" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M51 28V40" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="51" cy="43" r="2.5" fill="white"/>
+  <text x="76" y="40" fill="#1E2772" font-family="Poppins, Arial, sans-serif" font-size="25" font-weight="700">Portal DS</text>
+</svg>
