@@ -1,44 +1,51 @@
 digraph componentes {
-  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=13, nodesep=0.45, ranksep=0.5,
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=13, nodesep=0.4, ranksep=0.5,
          bgcolor="white", pad=0.3, newrank=true, splines=spline];
   node  [fontname="DejaVu Sans", fontsize=11, shape=box, style="rounded,filled",
-         fillcolor="#FFFFFF", color="#37474F", penwidth=1.2, margin="0.18,0.08"];
+         fillcolor="#FFFFFF", color="#37474F", penwidth=1.2, margin="0.16,0.08"];
   edge  [fontname="DejaVu Sans", fontsize=9.5, color="#37474F", penwidth=1.1, arrowsize=0.8];
 
   subgraph cluster_cliente {
     label=<<B>Camada de Apresentação</B> — navegador Web executando a SPA Angular>;
     labeljust=l; style="rounded,filled"; fillcolor="#E3F2FD"; color="#1565C0"; penwidth=1.4;
-    nav     [label=<<FONT POINT-SIZE="9">«runtime»</FONT><BR/><B>Motor do navegador</B><BR/><FONT POINT-SIZE="9">executa a SPA e aplica a política CORS</FONT>>, fillcolor="#F5F5F5"];
-    login   [label=<<FONT POINT-SIZE="9">«component»</FONT><BR/><B>LoginComponent</B><BR/><FONT POINT-SIZE="9">formulário e resultado</FONT>>];
-    svc     [label=<<FONT POINT-SIZE="9">«service»</FONT><BR/><B>LoginService</B><BR/><FONT POINT-SIZE="9">monta a requisição</FONT>>];
+    paginas [label=<<FONT POINT-SIZE="9">«component»</FONT><BR/><B>LoginComponent · SignUpComponent<BR/>ProfileComponent</B><BR/><FONT POINT-SIZE="9">formulários, perfil e mensagens</FONT>>];
+    guards  [label=<<FONT POINT-SIZE="9">«guard»</FONT><BR/><B>authGuard · guestGuard</B><BR/><FONT POINT-SIZE="9">controlam as rotas</FONT>>];
+    fauth   [label=<<FONT POINT-SIZE="9">«service»</FONT><BR/><B>AuthService (Angular)</B><BR/><FONT POINT-SIZE="9">estado da sessão, token CSRF<BR/>e chamadas à API</FONT>>];
     http    [label=<<FONT POINT-SIZE="9">«framework»</FONT><BR/><B>HttpClient</B>>, fillcolor="#F5F5F5"];
-    { rank=same; nav; login; svc; http; }
-    nav -> login [label=" executa", style=dotted];
-    login -> svc [label=" «use»\n login()", style=dashed, arrowhead=vee];
-    svc -> http  [label=" «use»\n post()", style=dashed, arrowhead=vee];
+    { rank=same; guards; fauth; paginas; }
+    fauth -> paginas [label=" «use»", style=dashed, dir=back, arrowtail=vee];
+    guards -> fauth  [label=" «use»", style=dashed, arrowhead=vee];
+    fauth -> http    [label=" «use»", style=dashed, arrowhead=vee];
   }
 
   subgraph cluster_web {
-    label=<<B>Servidor Web</B> — Angular CLI (ng serve), porta 4200>;
+    label=<<B>Servidor Web</B> — Angular CLI (ng serve) sobre Node.js, porta 4200>;
     labeljust=l; style="rounded,filled"; fillcolor="#FFF8E1"; color="#F9A825"; penwidth=1.4;
     estaticos [label=<<B>Entrega de recursos estáticos</B><BR/><FONT POINT-SIZE="9">index.html, *.js, *.css</FONT>>];
+    proxy     [label=<<B>Proxy de desenvolvimento</B><BR/><FONT POINT-SIZE="9">proxy.conf.json: /api → localhost:8080</FONT>>];
+    { rank=same; estaticos; proxy; }
   }
 
   subgraph cluster_app {
     label=<<B>Servidor de Aplicação</B> — Spring Boot 4 com Tomcat embutido, porta 8080>;
     labeljust=l; style="rounded,filled"; fillcolor="#E8F5E9"; color="#2E7D32"; penwidth=1.4;
 
+    filtros [label=<<FONT POINT-SIZE="9">«framework»</FONT><BR/><B>Cadeia de filtros do Spring Security</B><BR/><FONT POINT-SIZE="9">configurada em SecurityConfig: CSRF, sessão,<BR/>regras de acesso, logout, respostas 401 e 403</FONT>>, fillcolor="#F5F5F5"];
+    sessoes [label=<<FONT POINT-SIZE="9">«store»</FONT><BR/><B>Sessões HTTP</B><BR/><FONT POINT-SIZE="9">memória do Tomcat:<BR/>SecurityContext e token CSRF</FONT>>, shape=folder, style="filled", fillcolor="#FFFFFF"];
+    { rank=same; filtros; sessoes; }
+
     subgraph cluster_api {
       label=<<I>api</I> — controle>; labeljust=l; style="dashed,rounded,filled"; color="#66BB6A"; fillcolor="#F1F8E9";
-      dispatcher [label=<<FONT POINT-SIZE="9">«framework»</FONT><BR/><B>DispatcherServlet</B><BR/><FONT POINT-SIZE="9">+ CorsConfig</FONT>>, fillcolor="#F5F5F5"];
-      controller [label=<<FONT POINT-SIZE="9">«controller»</FONT><BR/><B>AuthController</B><BR/><FONT POINT-SIZE="9">POST /api/auth/login</FONT>>];
-      handler    [label=<<FONT POINT-SIZE="9">«controller advice»</FONT><BR/><B>AuthExceptionHandler</B><BR/><FONT POINT-SIZE="9">respostas 400 e 500</FONT>>];
-      { rank=same; dispatcher; controller; handler; }
-      handler -> dispatcher [style=invis]; dispatcher -> controller [style=invis];
+      dispatcher [label=<<FONT POINT-SIZE="9">«framework»</FONT><BR/><B>DispatcherServlet</B><BR/><FONT POINT-SIZE="9">conversão JSON e @Valid</FONT>>, fillcolor="#F5F5F5"];
+      controller [label=<<FONT POINT-SIZE="9">«controller»</FONT><BR/><B>AuthController</B><BR/><FONT POINT-SIZE="9">/api/auth: login, cadastro, me, csrf</FONT>>];
+      limitador  [label=<<FONT POINT-SIZE="9">«component»</FONT><BR/><B>LimitadorTentativasLogin</B><BR/><FONT POINT-SIZE="9">5 por e-mail, 20 por IP, 1 min</FONT>>];
+      handler    [label=<<FONT POINT-SIZE="9">«controller advice»</FONT><BR/><B>AuthExceptionHandler</B><BR/><FONT POINT-SIZE="9">respostas 400, 409 e 500</FONT>>];
+      { rank=same; handler; dispatcher; controller; limitador; }
+      handler -> dispatcher [style=invis]; controller -> limitador [style=invis];
     }
     subgraph cluster_dom {
       label=<<I>domain</I> — negócio (sem dependência de framework)>; labeljust=l; style="dashed,rounded,filled"; color="#66BB6A"; fillcolor="#F1F8E9";
-      service [label=<<FONT POINT-SIZE="9">«service»</FONT><BR/><B>AuthService</B><BR/><FONT POINT-SIZE="9">decisão de autenticação</FONT>>];
+      service [label=<<FONT POINT-SIZE="9">«service»</FONT><BR/><B>AuthService</B><BR/><FONT POINT-SIZE="9">autenticar() e cadastrar()</FONT>>];
       repoi   [label=<<FONT POINT-SIZE="9">«interface»</FONT><BR/><B>UserRepository</B>>];
       hasheri [label=<<FONT POINT-SIZE="9">«interface»</FONT><BR/><B>PasswordHasher</B>>];
       { rank=same; repoi; service; hasheri; }
@@ -46,14 +53,17 @@ digraph componentes {
     }
     subgraph cluster_inf {
       label=<<I>infra</I> — persistência e criptografia>; labeljust=l; style="dashed,rounded,filled"; color="#66BB6A"; fillcolor="#F1F8E9";
-      repo   [label=<<FONT POINT-SIZE="9">«repository»</FONT><BR/><B>JpaUserRepository</B><BR/><FONT POINT-SIZE="9">usa UsuarioJpaRepository (Spring Data JPA)</FONT>>];
-      hasher [label=<<FONT POINT-SIZE="9">«component»</FONT><BR/><B>Argon2PasswordHasher</B><BR/><FONT POINT-SIZE="9">Argon2PasswordEncoder (spring-security-crypto)</FONT>>];
+      repo   [label=<<FONT POINT-SIZE="9">«repository»</FONT><BR/><B>JpaUserRepository</B><BR/><FONT POINT-SIZE="9">Spring Data JPA</FONT>>];
+      hasher [label=<<FONT POINT-SIZE="9">«component»</FONT><BR/><B>Argon2PasswordHasher</B><BR/><FONT POINT-SIZE="9">Argon2PasswordEncoder</FONT>>];
       jdbc   [label=<<FONT POINT-SIZE="9">«driver»</FONT><BR/><B>PostgreSQL JDBC</B><BR/><FONT POINT-SIZE="9">+ Flyway (migrações)</FONT>>, fillcolor="#F5F5F5"];
       { rank=same; repo; hasher; }
     }
-    dispatcher -> controller [label=" «use»\n login(LoginRequest)", style=dashed, arrowhead=vee, constraint=false];
-    dispatcher -> handler    [label=" «use»\n trata exceções", style=dashed, arrowhead=vee, constraint=false];
-    controller -> service    [label=" «use»\n autenticar()", style=dashed, arrowhead=vee];
+    filtros -> sessoes    [label=" lê e grava", style=dashed, arrowhead=vee, constraint=false];
+    filtros -> dispatcher [label=" requisição autorizada", arrowhead=vee];
+    dispatcher -> controller [label=" «use»", style=dashed, arrowhead=vee, constraint=false];
+    dispatcher -> handler    [label=" «use»\n exceções", style=dashed, arrowhead=vee, constraint=false];
+    controller -> limitador  [label=" «use»", style=dashed, arrowhead=vee, constraint=false];
+    controller -> service    [label=" «use»", style=dashed, arrowhead=vee];
     service -> repoi         [label=" «use»", style=dashed, arrowhead=vee, constraint=false];
     service -> hasheri       [label=" «use»", style=dashed, arrowhead=vee, constraint=false];
     repoi -> repo   [label=" «realize»", style=dashed, dir=back, arrowtail=onormal];
@@ -67,7 +77,8 @@ digraph componentes {
     tabela [label=<<B>tabela usuarios</B><BR/><FONT POINT-SIZE="9">id · nome · email · senha_hash</FONT>>, shape=cylinder, style="filled", fillcolor="#FFFFFF"];
   }
 
-  nav -> estaticos   [label=" GET (carga inicial)", style=dotted];
-  http -> dispatcher [label=<  <B>POST /api/auth/login</B> (JSON)<BR/>  precedido de OPTIONS (pré-verificação CORS)>, color="#1565C0", penwidth=1.7];
-  jdbc -> tabela     [label=" SQL via TCP", color="#6A1B9A", penwidth=1.7];
+  http -> estaticos [label=" GET (carga inicial)", style=dotted];
+  http -> proxy     [label=<  <B>/api/auth/*</B> (JSON), mesma origem<BR/>  cookie JSESSIONID + cabeçalho X-XSRF-TOKEN>, color="#1565C0", penwidth=1.7];
+  proxy -> filtros  [label=<  HTTP para localhost:8080>, color="#1565C0", penwidth=1.7];
+  jdbc -> tabela    [label=" SQL via TCP", color="#6A1B9A", penwidth=1.7];
 }
