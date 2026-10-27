@@ -1,16 +1,26 @@
-# Frontend
+# Portal DS — Frontend
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.4.
 
 ## Development server
 
-To start a local development server, run:
+Start the backend on http://localhost:8080, then start the frontend with:
 
 ```bash
-ng serve
+npm start
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+Requests to `/api` are forwarded to the local backend by `proxy.conf.json`. The app provides:
+
+- account creation at `/cadastro`;
+- login at `/login`;
+- session restoration after a page reload;
+- protected identity page at `/perfil`;
+- server-side logout.
+
+Authentication uses the backend HTTP session. The `JSESSIONID` cookie is `HttpOnly`; Angular keeps the CSRF token returned by the backend only in memory and sends it in the `X-XSRF-TOKEN` header. No authentication data is stored in `localStorage` or `sessionStorage`.
 
 ## Code scaffolding
 

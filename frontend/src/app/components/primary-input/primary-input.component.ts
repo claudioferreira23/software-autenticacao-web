@@ -1,50 +1,76 @@
-import { Component, Input, forwardRef } from '@angular/core';
-import { ControlValueAccessor, FormGroup, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
+import { ChangeDetectorRef, Component, Input, forwardRef, inject } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-type InputTypes = "text" | "email" | "password"
+type InputType = 'text' | 'email' | 'password';
 
 @Component({
   selector: 'app-primary-input',
   standalone: true,
-  imports: [
-    ReactiveFormsModule
-  ],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => PrimaryInputComponent),
-      multi: true
-    }
+      multi: true,
+    },
   ],
   templateUrl: './primary-input.component.html',
-  styleUrl: './primary-input.component.scss'
+  styleUrl: './primary-input.component.scss',
 })
 export class PrimaryInputComponent implements ControlValueAccessor {
-  @Input() type: InputTypes = "text";
-  @Input() placeholder: string = "";
-  @Input() label: string = "";
-  @Input() inputName: string = "";
+  @Input() type: InputType = 'text';
+  @Input() placeholder = '';
+  @Input() label = '';
+  @Input() inputName = '';
+  @Input() autocomplete = '';
+  @Input() invalid = false;
+  @Input() errorMessage = '';
 
-  value: string = ''
-  onChange: any = () => {}
-  onTouched: any = () => {}
+  value = '';
+  disabled = false;
+  passwordVisible = false;
 
-  onInput(event: Event){
-    const value = (event.target as HTMLInputElement).value
-    this.onChange(value)
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private onChange: (value: string) => void = () => undefined;
+  private onTouched: () => void = () => undefined;
+
+  get errorId() {
+    return `${this.inputName}-error`;
   }
 
-  writeValue(value: any): void {
-    this.value = value
+  get displayedType(): InputType {
+    return this.type === 'password' && this.passwordVisible ? 'text' : this.type;
   }
 
-  registerOnChange(fn: any): void {
-    this.onChange = fn
+  togglePasswordVisibility() {
+    if (this.type === 'password' && !this.disabled) {
+      this.passwordVisible = !this.passwordVisible;
+    }
   }
 
-  registerOnTouched(fn: any): void {
-    this.onTouched = fn
+  onInput(event: Event) {
+    this.value = (event.target as HTMLInputElement).value;
+    this.onChange(this.value);
   }
 
-  setDisabledState(isDisabled: boolean): void {}
+  onBlur() {
+    this.onTouched();
+  }
+
+  writeValue(value: string | null): void {
+    this.value = value ?? '';
+    this.changeDetectorRef.markForCheck();
+  }
+
+  registerOnChange(fn: (value: string) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.disabled = isDisabled;
+    this.changeDetectorRef.markForCheck();
+  }
 }

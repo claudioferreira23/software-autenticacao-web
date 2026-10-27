@@ -9,16 +9,12 @@ public record LoginResponse(boolean autenticado, UsuarioResponse usuario, String
 		return new LoginResponse(true, usuario, null, null);
 	}
 
-	public static LoginResponse entradaInvalida() {
-		return new LoginResponse(false, null, "ENTRADA_INVALIDA", null);
-	}
-
 	public static LoginResponse credenciaisInvalidas() {
 		return new LoginResponse(false, null, "CREDENCIAIS_INVALIDAS", "E-mail ou senha inválidos.");
 	}
 
-	public static LoginResponse erroInterno() {
-		return new LoginResponse(false, null, "ERRO_INTERNO", null);
+	public static LoginResponse tentativasExcedidas() {
+		return new LoginResponse(false, null, "TENTATIVAS_EXCEDIDAS", "Muitas tentativas. Tente novamente mais tarde.");
 	}
 
 }
