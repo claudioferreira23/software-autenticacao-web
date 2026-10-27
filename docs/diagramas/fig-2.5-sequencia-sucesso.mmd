@@ -1,0 +1,51 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"DejaVu Sans, Arial, sans-serif","fontSize":"15px","actorBkg":"#FFFFFF","actorBorder":"#37474F","actorTextColor":"#111111","signalColor":"#37474F","signalTextColor":"#111111","noteBkgColor":"#FFFDE7","noteBorderColor":"#9E9D24","activationBkgColor":"#E8F5E9","activationBorderColor":"#2E7D32","labelBoxBkgColor":"#ECEFF1","labelBoxBorderColor":"#37474F","loopTextColor":"#111111"},"sequence":{"mirrorActors":false,"showSequenceNumbers":true,"actorMargin":14,"messageMargin":24,"boxMargin":8}}}%%
+sequenceDiagram
+    autonumber
+    box rgb(227,242,253) Navegador — SPA Angular, origem localhost:4200
+        participant LC as LoginComponent
+        participant FA as AuthService (Angular)
+    end
+    participant PX as ng serve<br/>(proxy /api)
+    box rgb(232,245,233) Servidor de Aplicação — Spring Boot, porta 8080
+        participant SF as Filtros do<br/>Spring Security
+        participant CT as AuthController
+        participant LM as Limitador<br/>TentativasLogin
+        participant SV as AuthService
+        participant RP as JpaUser<br/>Repository
+        participant PH as Argon2Password<br/>Hasher
+    end
+    participant DB as PostgreSQL
+
+    Note over LC: usuário informa e-mail e senha<br/>e aciona "Entrar"
+    LC->>FA: login(email, senha)
+    FA-)PX: GET /api/auth/csrf
+    PX-)SF: GET /api/auth/csrf
+    SF->>CT: csrf(token)
+    Note over SF,CT: cria a sessão e guarda<br/>o token CSRF nela
+    CT--)FA: 200 {headerName, token} + Set-Cookie JSESSIONID
+    FA-)PX: POST /api/auth/login {email, senha}<br/>Cookie + X-XSRF-TOKEN
+    PX-)SF: POST /api/auth/login
+    activate SF
+    Note over SF: confere o token CSRF,<br/>JSON → LoginRequest e @Valid
+    SF->>CT: login(requisicao)
+    activate CT
+    CT->>LM: verificarIp(ip), verificarEmail(email)
+    LM-->>CT: sem bloqueio
+    CT->>SV: autenticar(email, senha)
+    activate SV
+    SV->>RP: buscarPorEmail(email)
+    RP->>DB: SELECT … FROM usuarios WHERE email = ?
+    DB-->>RP: 1 linha
+    RP-->>SV: Optional[Usuario]
+    SV->>PH: verificar(senha, senhaHash)
+    PH-->>SV: true
+    SV-->>CT: ResultadoAutenticacao.sucesso
+    deactivate SV
+    CT->>LM: registrarSucessoEmail(email)
+    Note over CT: registra tentativa SUCESSO,<br/>troca o id da sessão e grava<br/>o usuário autenticado nela
+    CT-->>SF: 200 {autenticado: true, usuario}
+    deactivate CT
+    SF--)FA: 200 + Set-Cookie JSESSIONID (novo id)
+    deactivate SF
+    FA-->>LC: LoginSuccessResponse (guarda o usuário no estado)
+    Note over LC: exibe mensagem de sucesso<br/>e navega para /perfil

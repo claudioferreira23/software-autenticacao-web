@@ -1,0 +1,58 @@
+digraph implantacao {
+  graph [rankdir=TB, fontname="DejaVu Sans", fontsize=13, nodesep=0.8, ranksep=0.75,
+         bgcolor="white", pad=0.3, newrank=true, splines=spline];
+  node  [fontname="DejaVu Sans", fontsize=10.5, shape=box3d, style="filled",
+         fillcolor="#FFFFFF", color="#37474F", penwidth=1.2, margin="0.22,0.12"];
+  edge  [fontname="DejaVu Sans", fontsize=9.5, color="#37474F", penwidth=1.4, arrowhead=none];
+
+  subgraph cluster_host {
+    label=<<FONT POINT-SIZE="10">«device»</FONT><BR/><B>Computador local (localhost)</B><BR/><FONT POINT-SIZE="10">sistema operacional Linux ou Windows</FONT>>;
+    style="filled"; fillcolor="#FAFAFA"; color="#263238"; penwidth=1.8; margin=20;
+
+    browser [fillcolor="#E3F2FD", label=<
+      <TABLE BORDER="0" CELLSPACING="2">
+        <TR><TD><FONT POINT-SIZE="9">«execution environment»</FONT></TD></TR>
+        <TR><TD><B>Navegador Web</B></TD></TR>
+        <TR><TD><FONT POINT-SIZE="9">Google Chrome / Mozilla Firefox</FONT></TD></TR>
+        <TR><TD BORDER="1" BGCOLOR="#FFFFFF" STYLE="rounded"><FONT POINT-SIZE="9">«artifact» SPA Angular em execução<BR/>(main.js, polyfills.js, styles.css)</FONT></TD></TR>
+        <TR><TD BORDER="1" BGCOLOR="#FFFFFF" STYLE="rounded"><FONT POINT-SIZE="9">cookie JSESSIONID (HttpOnly, SameSite=Lax)</FONT></TD></TR>
+      </TABLE>>];
+
+    node_rt [fillcolor="#FFF8E1", label=<
+      <TABLE BORDER="0" CELLSPACING="2">
+        <TR><TD><FONT POINT-SIZE="9">«execution environment»</FONT></TD></TR>
+        <TR><TD><B>Node.js (versão LTS)</B></TD></TR>
+        <TR><TD><FONT POINT-SIZE="9">Angular CLI — <I>ng serve</I> — porta 4200<BR/>proxy de desenvolvimento: /api → localhost:8080</FONT></TD></TR>
+        <TR><TD BORDER="1" BGCOLOR="#FFFFFF" STYLE="rounded"><FONT POINT-SIZE="9">«artifact» projeto Angular 22 (src/)<BR/>«artifact» proxy.conf.json</FONT></TD></TR>
+      </TABLE>>];
+
+    jvm [fillcolor="#E8F5E9", label=<
+      <TABLE BORDER="0" CELLSPACING="2">
+        <TR><TD><FONT POINT-SIZE="9">«execution environment»</FONT></TD></TR>
+        <TR><TD><B>JVM — Java 21</B></TD></TR>
+        <TR><TD><FONT POINT-SIZE="9">Spring Boot 4.1 + Tomcat 11 embutido — porta 8080</FONT></TD></TR>
+        <TR><TD BORDER="1" BGCOLOR="#FFFFFF" STYLE="rounded"><FONT POINT-SIZE="9">«artifact» autenticacao-api.jar<BR/>«artifact» application.properties · .env<BR/>«artifact» migrações Flyway (V1)</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="9">sessões HTTP em memória (expiram após 30 min de inatividade)</FONT></TD></TR>
+      </TABLE>>];
+
+    subgraph cluster_docker {
+      label=<<FONT POINT-SIZE="9">«execution environment»</FONT><BR/><B>Docker Engine</B><BR/><FONT POINT-SIZE="9">compose.yaml · volume postgres-data</FONT>>;
+      style="filled,rounded"; fillcolor="#EDE7F6"; color="#6A1B9A"; penwidth=1.2; margin=12;
+      pg [fillcolor="#F3E5F5", label=<
+      <TABLE BORDER="0" CELLSPACING="2">
+        <TR><TD><FONT POINT-SIZE="9">«container» «database server»</FONT></TD></TR>
+        <TR><TD><B>PostgreSQL 16</B></TD></TR>
+        <TR><TD><FONT POINT-SIZE="9">porta 5432</FONT></TD></TR>
+        <TR><TD BORDER="1" BGCOLOR="#FFFFFF" STYLE="rounded"><FONT POINT-SIZE="9">«schema» banco autenticacao<BR/>tabela usuarios</FONT></TD></TR>
+      </TABLE>>];
+    }
+
+    { rank=same; browser; node_rt; }
+    { rank=same; jvm; pg; }
+  }
+
+  browser -> node_rt [label=<  <B>HTTP / TCP</B> — localhost:4200<BR/>  GET index.html, *.js, *.css<BR/>  GET e POST /api/auth/* (mesma origem)>, color="#1565C0", penwidth=1.6];
+  node_rt -> jvm     [label=<  <B>HTTP / TCP</B> (proxy)<BR/>  localhost:8080<BR/>  /api/auth/*>, color="#1565C0", penwidth=1.6];
+  browser -> jvm     [label=<  Swagger UI<BR/>  (somente desenvolvimento)>, style=dotted];
+  jvm -> pg          [label=<  <B>JDBC</B><BR/>  protocolo PostgreSQL<BR/>  localhost:5432>];
+}
